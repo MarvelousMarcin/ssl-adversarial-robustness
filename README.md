@@ -1,4 +1,4 @@
-# Are Self-Supervised Representations Robust? A Comparative Study
+# Comparative Study of Representation Quality and Adversarial Robustness in DINOv2, I-JEPA, and Vision Transformers
 
 **A Comparative Study of Representation Quality and Adversarial Robustness in DINOv2, I-JEPA, and Vision Transformers**
 
