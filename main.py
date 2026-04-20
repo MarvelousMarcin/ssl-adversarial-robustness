@@ -18,6 +18,8 @@ from metrics.knn_accuracy import knn_accuracy
 from metrics.alignment_uniformity import alignment, uniformity
 from attacks.fgsm import fgsm_attack, fgsm_attack_label_free
 from attacks.pgd import pgd_attack, pgd_attack_label_free
+from attacks.apgd import apgd_attack, apgd_attack_label_free
+from attacks.autoattack import autoattack_centroid
 from attacks.loss import compute_centroids
 from metrics.embedding_shift import embedding_shift, cosine_shift
 import numpy as np
@@ -46,8 +48,19 @@ parser.add_argument("--model", default="dino", choices=["dino", "ijepa", "vit_su
 parser.add_argument("--checkpoint", default="./ijepa/checkpoints/IN1K-vit.h.14-300e.pth.tar",
                     help="Path to model checkpoint (required for ijepa)")
 parser.add_argument("--subset_size", default=None, type=int, help="Limit dataset to first N samples")
-parser.add_argument("--attack", default="none", choices=["none", "fgsm", "pgd", "fgsm_lf", "pgd_lf"],
-                    help="Adversarial attack: fgsm/pgd (centroid-based) or fgsm_lf/pgd_lf (label-free)")
+parser.add_argument("--attack", default="none",
+                    choices=["none", "fgsm", "pgd", "fgsm_lf", "pgd_lf",
+                             "apgd", "apgd_lf", "aa"],
+                    help="Adversarial attack. Centroid-based: fgsm/pgd/apgd/aa. "
+                         "Label-free (embedding drift): fgsm_lf/pgd_lf/apgd_lf. "
+                         "aa = full AutoAttack (needs torchattacks).")
+parser.add_argument("--apgd_steps", default=100, type=int, help="APGD iteration count")
+parser.add_argument("--apgd_restarts", default=1, type=int,
+                    help="APGD restarts (per-sample worst case kept)")
+parser.add_argument("--aa_version", default="standard", choices=["standard", "plus", "rand"],
+                    help="AutoAttack version passed to torchattacks")
+parser.add_argument("--seed", default=0, type=int,
+                    help="Random seed for attack init (PGD/APGD/AA)")
 parser.add_argument("--epsilon", default=0.03, type=float, help="Perturbation budget for adversarial attacks")
 parser.add_argument("--pgd_steps", default=20, type=int, help="Number of PGD iterations")
 parser.add_argument("--pgd_restarts", default=5, type=int,
@@ -59,6 +72,11 @@ parser.add_argument("--attack_batch_size", default=16, type=int,
                     help="Batch size during attack (smaller to avoid OOM due to gradient computation)")
 
 args = parser.parse_args()
+
+torch.manual_seed(args.seed)
+np.random.seed(args.seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(args.seed)
 
 dm = DatasetManager(batch_size=args.batch_size, num_workers=4)
 
@@ -83,7 +101,8 @@ elif args.model == "resnet50":
 if args.pgd_alpha is None:
     args.pgd_alpha = 2.5 * args.epsilon / args.pgd_steps
 
-attack_tag = f"_{args.attack}_eps{args.epsilon}" if args.attack != "none" else ""
+seed_tag = f"_seed{args.seed}" if args.seed != 0 else ""
+attack_tag = f"_{args.attack}_eps{args.epsilon}{seed_tag}" if args.attack != "none" else ""
 cache_name = f"./results/{args.model}_{args.dataset}_{args.pool}{attack_tag}.pkl"
 cache = Cache(cache_name)
 
@@ -170,6 +189,23 @@ if not cache.exists():
                     alpha=args.pgd_alpha, steps=args.pgd_steps,
                     restarts=args.pgd_restarts,
                 )
+            elif args.attack == "apgd":
+                adv_images = apgd_attack(
+                    model, image, label, epsilon=args.epsilon,
+                    steps=args.apgd_steps, restarts=args.apgd_restarts,
+                    centroids=centroids,
+                )
+            elif args.attack == "apgd_lf":
+                adv_images = apgd_attack_label_free(
+                    model, image, epsilon=args.epsilon,
+                    steps=args.apgd_steps, restarts=args.apgd_restarts,
+                )
+            elif args.attack == "aa":
+                adv_images = autoattack_centroid(
+                    model, image, label, epsilon=args.epsilon,
+                    centroids=centroids, device=device,
+                    version=args.aa_version, seed=args.seed,
+                )
 
             with torch.no_grad():
                 emb_adv = model.get_embedding(adv_images)
@@ -251,6 +287,7 @@ result_row = {
     "subset_size": args.subset_size,
     "attack": args.attack,
     "epsilon": args.epsilon if args.attack != "none" else None,
+    "seed": args.seed,
     "num_samples": int(len(labels)),
     "num_classes": int(len(np.unique(labels))),
 }

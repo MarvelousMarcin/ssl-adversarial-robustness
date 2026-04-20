@@ -7,3 +7,4 @@ matplotlib
 tqdm
 pyyaml
 transformers
+torchattacks  # optional — only needed for --attack aa (full AutoAttack)
