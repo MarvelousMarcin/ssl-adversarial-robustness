@@ -17,13 +17,17 @@ PGD_RESTARTS=2
 APGD_STEPS=100
 APGD_RESTARTS=1
 SEED=0
-RUN_AA=${RUN_AA:-0}  # set RUN_AA=1 to also run full AutoAttack (very slow)
+RUN_AA=${RUN_AA:-0}          # set RUN_AA=1 to also run full AutoAttack (very slow)
+RUN_TRANSFER=1  # set RUN_TRANSFER=1 to run cross-model transfer eval
+# Epsilons used for transfer phase (narrower by default — transfer grid grows quickly).
+TRANSFER_EPSILONS=(0.031)
 
 echo "=============================="
 echo "  SSL Robustness Experiments"
 echo "  model-pools=${MODEL_POOLS[*]}"
 echo "  pgd=${PGD_STEPS}x${PGD_RESTARTS}  apgd=${APGD_STEPS}x${APGD_RESTARTS}"
-echo "  eps=${EPSILONS[*]}  seed=${SEED}  RUN_AA=${RUN_AA}"
+echo "  eps=${EPSILONS[*]}  seed=${SEED}"
+echo "  RUN_AA=${RUN_AA}  RUN_TRANSFER=${RUN_TRANSFER}  transfer_eps=${TRANSFER_EPSILONS[*]}"
 echo "=============================="
 
 run_for_mp() {
@@ -132,25 +136,39 @@ for mp in "${MODEL_POOLS[@]}"; do
     done
 done
 
-# Phase 8: Full AutoAttack (centroid) — APGD-CE + APGD-DLR + FAB + Square.
-# Very slow; opt in via RUN_AA=1. Requires `pip install torchattacks`.
-if [ "$RUN_AA" = "1" ]; then
+if [ "$RUN_TRANSFER" = "1" ]; then
     echo ""
-    echo "--- Phase 8: Full AutoAttack (centroid) ---"
-    for mp in "${MODEL_POOLS[@]}"; do
-        model="${mp%%:*}"; pool="${mp##*:}"
-        for dataset in "${DATASETS[@]}"; do
-            for eps in "${EPSILONS[@]}"; do
-                echo "[AA] model=$model  pool=$pool  dataset=$dataset  eps=$eps"
-                run_for_mp "$model" "$pool" --dataset "$dataset" \
-                    --attack aa --epsilon "$eps" --aa_version standard
+    echo "--- Phase 9: Transfer attack (APGD-LF) ---"
+    for src in "${MODEL_POOLS[@]}"; do
+        src_model="${src%%:*}"; src_pool="${src##*:}"
+        for tgt in "${MODEL_POOLS[@]}"; do
+            tgt_model="${tgt%%:*}"; tgt_pool="${tgt##*:}"
+            if [ "$src_model" = "$tgt_model" ] && [ "$src_pool" = "$tgt_pool" ]; then
+                continue
+            fi
+            for dataset in "${DATASETS[@]}"; do
+                for eps in "${TRANSFER_EPSILONS[@]}"; do
+                    echo "[TRANSFER] ${src} -> ${tgt}  dataset=$dataset  eps=$eps"
+                    python transfer_attack.py \
+                        --source_model "$src_model" --source_pool "$src_pool" \
+                        --target_model "$tgt_model" --target_pool "$tgt_pool" \
+                        --dataset "$dataset" --attack apgd_lf \
+                        --epsilon "$eps" \
+                        --apgd_steps "$APGD_STEPS" --apgd_restarts "$APGD_RESTARTS" \
+                        --seed "$SEED"
+                done
             done
         done
     done
 fi
 
 echo ""
+echo "--- Phase 10: Aggregate results (LaTeX tables + figures) ---"
+python aggregate_results.py
+
+echo ""
 echo "=============================="
 echo "  All experiments complete!"
-echo "  Results: ./results/tables/"
+echo "  Raw results:   ./results/tables/"
+echo "  Paper output:  ./results/paper/"
 echo "=============================="
