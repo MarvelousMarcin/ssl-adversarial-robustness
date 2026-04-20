@@ -13,7 +13,7 @@ MODEL_LABELS = {"dino": "DINOv2", "ijepa": "I-JEPA", "vit_sup": "ViT-Sup", "resn
 COLORS = {"dino": "#1f77b4", "ijepa": "#ff7f0e", "vit_sup": "#2ca02c", "resnet50": "#d62728"}
 
 DEFAULT_EPSILONS = [0.008, 0.016, 0.031, 0.063]
-DEFAULT_DATASET = "imagenet"
+DEFAULT_DATASET = "cifar100"
 DEFAULT_POOL = "mean"
 
 

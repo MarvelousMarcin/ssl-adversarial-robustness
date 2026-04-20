@@ -148,7 +148,7 @@ def clean_vs_adversarial_cka(dataset, attack, epsilon):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="cifar100")
+    parser.add_argument("--dataset", default="cifar10")
     parser.add_argument("--attack", default=None, help="If set, also compute clean-vs-adversarial CKA")
     parser.add_argument("--epsilon", default=0.03, type=float)
     args = parser.parse_args()

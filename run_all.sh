@@ -8,7 +8,7 @@
 set -e
 
 MODELS=("dino" "ijepa" "vit_sup" "resnet50")
-DATASETS=("imagenet" "cifar10")
+DATASETS=("cifar100")
 EPSILONS=(0.008 0.016 0.031 0.063)
 POOL="mean"
 PGD_STEPS=20
@@ -21,8 +21,8 @@ echo "=============================="
 
 # Wipe stale caches (clean + adversarial) since cache name doesn't encode
 # pool/steps/restarts. Comment out if you want to reuse clean embeddings.
-echo "Clearing stale embedding caches..."
-rm -f ./results/*.pkl
+# echo "Clearing stale embedding caches..."
+# rm -f ./results/*.pkl
 
 # Phase 1: Clean evaluation (pool-matched)
 echo ""
