@@ -1,16 +1,3 @@
-"""Cross-model transfer attack eval.
-
-Generate adversarials with a source model, embed them with a target model, then
-evaluate target-side metrics against the target's clean reference. Only label-free
-attacks are supported — centroid-based attacks bind perturbations to the source's
-own centroid geometry and wouldn't be a meaningful transfer test.
-
-Usage:
-    python transfer_attack.py --source_model dino --source_pool mean \\
-        --target_model ijepa --target_pool mean \\
-        --dataset cifar100 --attack apgd_lf --epsilon 0.031
-"""
-
 import argparse
 import csv
 import json

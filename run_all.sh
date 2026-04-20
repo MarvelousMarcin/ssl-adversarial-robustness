@@ -10,11 +10,11 @@ set -e
 # Model-pool pairs. DINOv2 runs both pools; others use mean (IJEPA/ResNet ignore it,
 # ViT-sup is matched to mean for fair cross-model comparison — see README).
 MODEL_POOLS=("dino:mean" "dino:cls" "ijepa:mean" "vit_sup:mean" "resnet50:mean")
-DATASETS=("cifar100")
-EPSILONS=(0.008 0.016 0.031 0.063)
+DATASETS=("cifar100" "imagenet")
+EPSILONS=(0.008 0.016 0.063)
 PGD_STEPS=20
 PGD_RESTARTS=2
-APGD_STEPS=100
+APGD_STEPS=50
 APGD_RESTARTS=1
 SEED=0
 RUN_AA=${RUN_AA:-0}          # set RUN_AA=1 to also run full AutoAttack (very slow)
