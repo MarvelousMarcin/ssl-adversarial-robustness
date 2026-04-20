@@ -1,14 +1,9 @@
 #!/bin/bash
 # Full benchmark grid.
 # Usage: bash run_all.sh
-#
-# NOTE: cache filenames encode (model, dataset, pool, attack, eps, seed-if-nonzero).
-# steps/restarts are NOT in the name, so if you change those wipe adv caches first.
 
 set -e
 
-# Model-pool pairs. DINOv2 runs both pools; others use mean (IJEPA/ResNet ignore it,
-# ViT-sup is matched to mean for fair cross-model comparison — see README).
 MODEL_POOLS=("dino:mean" "dino:cls" "ijepa:mean" "vit_sup:mean" "resnet50:mean")
 DATASETS=("cifar100" "imagenet")
 EPSILONS=(0.008 0.016 0.063)
@@ -17,8 +12,8 @@ PGD_RESTARTS=2
 APGD_STEPS=50
 APGD_RESTARTS=1
 SEED=0
-RUN_AA=${RUN_AA:-0}          # set RUN_AA=1 to also run full AutoAttack (very slow)
-RUN_TRANSFER=1  # set RUN_TRANSFER=1 to run cross-model transfer eval
+RUN_AA=${RUN_AA:-0}
+RUN_TRANSFER=1
 # Epsilons used for transfer phase (narrower by default — transfer grid grows quickly).
 TRANSFER_EPSILONS=(0.031)
 
